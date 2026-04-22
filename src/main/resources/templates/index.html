@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="fr">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Gestion des Comptes</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', Arial, sans-serif; background: #f0f4f8; color: #2d3748; }
+
+    header {
+      background: linear-gradient(135deg, #1a56db, #0e3a8a);
+      color: white; padding: 18px 32px;
+      display: flex; align-items: center; gap: 12px;
+    }
+    header h1 { font-size: 1.4rem; }
+
+    .container { max-width: 1100px; margin: 30px auto; padding: 0 20px;
+                 display: grid; grid-template-columns: 350px 1fr; gap: 24px; }
+
+    .card { background: white; border-radius: 14px;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.08); overflow: hidden; }
+    .card-header { padding: 14px 20px; font-weight: 700; font-size: .95rem;
+                   border-bottom: 1px solid #e8edf2; }
+    .card-body { padding: 20px; }
+
+    label { display: block; font-size: .83rem; font-weight: 600;
+            color: #4a5568; margin: 12px 0 4px; }
+    input[type=text], input[type=number] {
+      width: 100%; padding: 9px 12px; border: 1.5px solid #d2dae3;
+      border-radius: 8px; font-size: .92rem; outline: none; }
+    input:focus { border-color: #1a56db; }
+
+    .btn-group { display: flex; gap: 8px; margin-top: 16px; flex-wrap: wrap; }
+    button, .btn {
+      padding: 9px 18px; border: none; border-radius: 8px;
+      font-size: .88rem; font-weight: 600; cursor: pointer;
+      text-decoration: none; display: inline-block; }
+    .btn-primary { background: #1a56db; color: white; }
+    .btn-success { background: #0d9966; color: white; }
+    .btn-danger  { background: #e53e3e; color: white; }
+    .btn-warning { background: #d97706; color: white; }
+    .btn-info    { background: #0891b2; color: white; }
+
+    .alert-success { background: #d1fae5; color: #065f46; padding: 10px 16px;
+                     border-radius: 8px; margin-bottom: 14px; font-weight: 600; }
+    .alert-danger  { background: #fee2e2; color: #991b1b; padding: 10px 16px;
+                     border-radius: 8px; margin-bottom: 14px; font-weight: 600; }
+
+    table { width: 100%; border-collapse: collapse; font-size: .9rem; }
+    thead th { background: #f7fafc; padding: 11px 14px; text-align: left;
+               font-size: .8rem; font-weight: 700; text-transform: uppercase;
+               color: #718096; border-bottom: 2px solid #e8edf2; }
+    tbody tr { border-bottom: 1px solid #edf2f7; }
+    tbody tr:hover { background: #f7faff; }
+    tbody td { padding: 10px 14px; }
+
+    .badge-rib { background: #ebf4ff; color: #1a56db; padding: 3px 10px;
+                 border-radius: 20px; font-size: .78rem; font-weight: 700; }
+
+    .virement-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
+
+    @media(max-width: 780px) {
+      .container { grid-template-columns: 1fr; }
+      .virement-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <span style="font-size:1.8rem">&#127968;</span>
+  <h1>Gestion des Comptes Bancaires</h1>
+</header>
+
+<div class="container">
+
+  <!-- ── FORMULAIRE ─────────────────────────────── -->
+  <div>
+    <div class="card" style="margin-bottom:20px">
+      <div class="card-header">&#128203; Formulaire Compte</div>
+      <div class="card-body">
+
+        <!-- Message succes / erreur -->
+        <div th:if="${message}" class="alert-success" th:text="${message}"></div>
+        <div th:if="${erreur}"  class="alert-danger"  th:text="${erreur}"></div>
+
+        <!-- Formulaire creer ou modifier selon si rib est present -->
+        <form th:action="${compteForm.rib != null} ? @{/comptes/modifier} : @{/comptes/creer}"
+              th:object="${compteForm}" method="post">
+
+          <input type="hidden" th:field="*{rib}"/>
+
+          <label>RIB</label>
+          <input type="number" th:field="*{rib}"
+                 th:readonly="${compteForm.rib != null}"
+                 placeholder="Automatique"
+                 style="background:#f7fafc; color:#718096"/>
+
+          <label>Nom du client</label>
+          <input type="text" th:field="*{nomClient}" placeholder="Ex: Ahmed Ben Ali"/>
+
+          <label>Solde (DT)</label>
+          <input type="number" th:field="*{solde}" placeholder="0.00" step="0.01"/>
+
+          <div class="btn-group">
+            <button type="submit"
+                    th:class="${compteForm.rib != null} ? 'btn-success' : 'btn-primary'">
+              <span th:text="${compteForm.rib != null} ? 'Modifier' : 'Creer'">Creer</span>
+            </button>
+            <a th:href="@{/comptes}" class="btn btn-warning">Annuler</a>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- ── VIREMENT ──────────────────────────────── -->
+    <div class="card">
+      <div class="card-header">&#128184; Virement</div>
+      <div class="card-body">
+        <form th:action="@{/comptes/virement}" method="post">
+          <div class="virement-grid">
+            <div>
+              <label>RIB Source</label>
+              <input type="number" name="source" placeholder="RIB"/>
+            </div>
+            <div>
+              <label>RIB Dest.</label>
+              <input type="number" name="dest" placeholder="RIB"/>
+            </div>
+            <div>
+              <label>Montant</label>
+              <input type="number" name="montant" placeholder="DT" step="0.01"/>
+            </div>
+          </div>
+          <div class="btn-group" style="margin-top:14px">
+            <button type="submit" class="btn-info">Effectuer le virement</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── LISTE ──────────────────────────────────── -->
+  <div class="card">
+    <div class="card-header">&#128202; Liste des Comptes</div>
+    <div style="overflow-x:auto">
+      <table>
+        <thead>
+          <tr>
+            <th>RIB</th>
+            <th>Client</th>
+            <th>Solde (DT)</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr th:each="c : ${comptes}">
+            <td><span class="badge-rib" th:text="${c.rib}"></span></td>
+            <td th:text="${c.nomClient}"></td>
+            <td th:text="${#numbers.formatDecimal(c.solde, 1, 2)} + ' DT'"></td>
+            <td>
+              <a th:href="@{/comptes/modifier/{rib}(rib=${c.rib})}"
+                 class="btn btn-warning" style="padding:5px 11px;font-size:.8rem">Modifier</a>
+              <a th:href="@{/comptes/supprimer/{rib}(rib=${c.rib})}"
+                 class="btn btn-danger"
+                 style="padding:5px 11px;font-size:.8rem"
+                 onclick="return confirm('Supprimer ce compte ?')">Supprimer</a>
+            </td>
+          </tr>
+          <tr th:if="${#lists.isEmpty(comptes)}">
+            <td colspan="4" style="text-align:center;padding:30px;color:#a0aec0;font-style:italic">
+              Aucun compte enregistre
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+</body>
+</html>

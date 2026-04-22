@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="fr">
+<head>
+    <meta charset="UTF-8"/>
+    <title>Gestion des Clients</title>
+
+    <link rel="stylesheet"
+          href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css"/>
+    <link rel="stylesheet"
+          href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css"/>
+
+    <style>
+        body { background-color: #f8f9fa; }
+        .card { border: none; box-shadow: 0 2px 12px rgba(0,0,0,.08); border-radius: 12px; }
+    </style>
+</head>
+
+<body>
+
+<nav class="navbar navbar-dark bg-primary mb-4">
+    <div class="container">
+        <!-- Clic sur le logo → reste sur clients (page principale) -->
+        <a class="navbar-brand fw-bold" th:href="@{/clients}" style="cursor:pointer;">
+            🏦 BanqueApp
+        </a>
+        <div class="d-flex gap-3">
+            <a class="nav-link text-white" th:href="@{/clients}">
+                <i class="bi bi-people-fill me-1"></i>Clients
+            </a>
+            <a class="nav-link text-white" th:href="@{/comptes}">
+                <i class="bi bi-bank me-1"></i>Comptes
+            </a>
+        </div>
+    </div>
+</nav>
+
+<div class="container">
+<div class="row g-4">
+
+<!-- ════════════════════════════════════════ -->
+<!--  FORMULAIRE CLIENT                       -->
+<!-- ════════════════════════════════════════ -->
+<div class="col-lg-4">
+    <div class="card">
+        <div class="card-header bg-primary text-white fw-bold">
+            <span th:text="${clientForm.cin != null} ? '✏️ Modifier Client' : '➕ Nouveau Client'">
+                Nouveau Client
+            </span>
+        </div>
+        <div class="card-body">
+            <form th:action="${clientForm.cin != null} ? @{/clients/modifier} : @{/clients/creer}"
+                  th:object="${clientForm}" method="post">
+
+                <div class="mb-3">
+                    <label class="form-label fw-bold">CIN</label>
+                    <input type="text"
+                           th:field="*{cin}"
+                           class="form-control"
+                           required
+                           th:readonly="${clientForm.cin != null}"/>
+                    <small class="text-muted">Numéro de Carte d'Identité Nationale</small>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label fw-bold">Nom</label>
+                    <input type="text" th:field="*{nom}" class="form-control" required/>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label fw-bold">Prénom</label>
+                    <input type="text" th:field="*{prenom}" class="form-control" required/>
+                </div>
+
+                <button type="submit" class="btn btn-primary w-100">
+                    <i class="bi bi-check-lg me-1"></i> Valider
+                </button>
+
+                <a th:if="${clientForm.cin != null}"
+                   th:href="@{/clients}"
+                   class="btn btn-secondary w-100 mt-2">
+                    <i class="bi bi-plus-lg me-1"></i> Nouveau Client
+                </a>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- ════════════════════════════════════════ -->
+<!--  LISTE DES CLIENTS                       -->
+<!-- ════════════════════════════════════════ -->
+<div class="col-lg-8">
+
+    <div class="card">
+        <div class="card-header fw-bold text-primary bg-white">
+            <i class="bi bi-people-fill me-1"></i> Liste des Clients
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>CIN</th>
+                            <th>Nom Complet</th>
+                            <th class="text-center">Comptes</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr th:each="c : ${clients}" th:id="'client-' + ${c.cin}">
+
+                            <td class="fw-bold font-monospace" th:text="${c.cin}"></td>
+
+                            <td>
+                                <i class="bi bi-person-circle text-secondary me-1"></i>
+                                <span th:text="${c.nom} + ' ' + ${c.prenom}"></span>
+                            </td>
+
+                            <!--
+                                RELATION ONE-TO-MANY :
+                                c.nbComptes est rempli dans ClientService.toDTO()
+                                depuis client.getComptes().size()
+                                → Un client possède PLUSIEURS comptes
+                            -->
+                            <td class="text-center">
+                                <span class="badge bg-info rounded-pill"
+                                      th:text="${c.nbComptes}">0</span>
+                                <button type="button"
+                                        class="btn btn-sm btn-link p-0 ms-1"
+                                        th:data-cin="${c.cin}"
+                                        th:data-nom="${c.nom} + ' ' + ${c.prenom}"
+                                        onclick="showComptes(this)"
+                                        title="Voir les comptes">
+                                    <i class="bi bi-eye text-primary"></i>
+                                </button>
+                            </td>
+
+                            <td>
+                                <a th:href="@{/clients/modifier/{cin}(cin=${c.cin})}"
+                                   class="btn btn-warning btn-sm me-1"
+                                   title="Modifier">
+                                    <i class="bi bi-pencil-fill"></i>
+                                </a>
+                                <button class="btn btn-danger btn-sm"
+                                        th:data-cin="${c.cin}"
+                                        th:data-nom="${c.nom} + ' ' + ${c.prenom}"
+                                        onclick="supprimerClient(this)"
+                                        title="Supprimer">
+                                    <i class="bi bi-trash-fill"></i>
+                                </button>
+                            </td>
+                        </tr>
+
+                        <tr th:if="${#lists.isEmpty(clients)}">
+                            <td colspan="4" class="text-center text-muted py-5">
+                                <i class="bi bi-people fs-1 d-block mb-2"></i>
+                                Aucun client enregistré
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- STATISTIQUES -->
+    <div class="card mt-3">
+        <div class="card-body">
+            <div class="row text-center">
+                <div class="col-md-6 border-end">
+                    <h4 class="text-primary mb-0">
+                        <i class="bi bi-people me-1"></i>
+                        <span th:text="${#lists.size(clients)}">0</span>
+                    </h4>
+                    <small class="text-muted">Clients</small>
+                </div>
+                <div class="col-md-6">
+                    <h4 class="text-success mb-0">
+                        <i class="bi bi-bank me-1"></i>
+                        <span th:text="${totalComptes}">0</span>
+                    </h4>
+                    <small class="text-muted">Comptes bancaires</small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>
+</div>
+</div>
+
+<!-- ════════════════════════════════════════ -->
+<!--  MODAL : comptes du client (AJAX)        -->
+<!-- ════════════════════════════════════════ -->
+<div class="modal fade" id="comptesModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title">
+                    <i class="bi bi-bank2 me-2"></i>Comptes du client
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="comptesModalBody">
+                <div class="text-center py-3">
+                    <div class="spinner-border text-primary" role="status"></div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <!-- Retour vers la page Comptes pour gérer les comptes de ce client -->
+                <a id="btnVoirComptes" href="/comptes" class="btn btn-primary">
+                    <i class="bi bi-bank me-1"></i> Aller aux Comptes
+                </a>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fermer</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+<script>
+let comptesModal;
+
+$(document).ready(function () {
+    comptesModal = new bootstrap.Modal(document.getElementById('comptesModal'));
+});
+
+/* ── Suppression client (AJAX DELETE) ── */
+function supprimerClient(btn) {
+    const cin = $(btn).data("cin");
+    const nom = $(btn).data("nom");
+
+    Swal.fire({
+        title: "Supprimer le client ?",
+        html: `Supprimer <strong>${nom}</strong> (CIN : ${cin}) ?<br><br>
+               <span class="text-danger">⚠️ Tous ses comptes seront aussi supprimés.</span>`,
+        icon: "warning",
+        showCancelButton: true,
+        confirmButtonColor: "#d33",
+        confirmButtonText: "Oui, supprimer",
+        cancelButtonText: "Annuler"
+    }).then((result) => {
+        if (result.isConfirmed) {
+            $.ajax({
+                url : "/clients/delete/" + cin,
+                type: "DELETE",
+                success: function (response) {
+                    if (response.success) {
+                        $("#client-" + cin).fadeOut(300, function () {
+                            $(this).remove();
+                            Swal.fire("Supprimé !", response.message, "success")
+                                .then(() => location.reload());
+                        });
+                    } else {
+                        Swal.fire("Erreur", response.message, "error");
+                    }
+                },
+                error: function (xhr) {
+                    const msg = xhr.responseJSON?.message || "Impossible de supprimer ce client.";
+                    Swal.fire("Erreur serveur", msg, "error");
+                }
+            });
+        }
+    });
+}
+
+/* ── Afficher les comptes du client dans le modal ──
+ *
+ * RELATION ONE-TO-MANY :
+ * On appelle GET /comptes/client/{cin}
+ * Le serveur retourne la liste JSON de tous les comptes de ce client.
+ * Un client → plusieurs comptes.
+ */
+function showComptes(btn) {
+    const cin = $(btn).data("cin");
+    const nom = $(btn).data("nom");
+
+    $("#comptesModalBody").html(
+        '<div class="text-center py-3"><div class="spinner-border text-primary" role="status"></div></div>'
+    );
+    comptesModal.show();
+
+    $.getJSON("/comptes/client/" + cin, function (comptes) {
+        let html = `<h6 class="mb-3">
+                        <i class="bi bi-person-fill me-1 text-primary"></i>
+                        ${nom} <span class="text-muted">(${cin})</span>
+                    </h6>`;
+
+        if (!comptes || comptes.length === 0) {
+            html += '<div class="alert alert-info">Aucun compte bancaire pour ce client.</div>';
+        } else {
+            html += `<table class="table table-bordered table-sm align-middle">
+                        <thead class="table-light">
+                            <tr><th>RIB</th><th class="text-end">Solde (€)</th></tr>
+                        </thead><tbody>`;
+
+            comptes.forEach(c => {
+                const cls = c.solde >= 0 ? 'text-success' : 'text-danger';
+                html += `<tr>
+                            <td class="font-monospace">${c.rib}</td>
+                            <td class="text-end fw-bold ${cls}">${parseFloat(c.solde).toFixed(2)} €</td>
+                         </tr>`;
+            });
+
+            html += `</tbody></table>
+                     <small class="text-muted">${comptes.length} compte(s) au total</small>`;
+        }
+
+        $("#comptesModalBody").html(html);
+    }).fail(function () {
+        $("#comptesModalBody").html(
+            '<div class="alert alert-danger">Impossible de charger les comptes.</div>'
+        );
+    });
+}
+</script>
+
+</body>
+</html>
